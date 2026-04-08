@@ -114,6 +114,28 @@ function initializeTables() {
         seedPublicLetters(db);
       }
     });
+
+    // Auto-seed admin user on every startup (safe — uses INSERT OR IGNORE)
+    seedAdminUser(db);
+  });
+}
+
+function seedAdminUser(db) {
+  const bcrypt = require('bcryptjs');
+  const adminEmail = process.env.ADMIN_EMAIL || 'eoforid@gmail.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'atokd1$';
+  const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Eoforid';
+
+  db.get(`SELECT id FROM users WHERE email = ?`, [adminEmail], (err, row) => {
+    if (err || row) return; // already exists or error
+    bcrypt.hash(adminPassword, 10, (err, hash) => {
+      if (err) return;
+      db.run(
+        `INSERT OR IGNORE INTO users (email, password, firstName, lastName) VALUES (?, ?, ?, '')`,
+        [adminEmail, hash, adminFirstName],
+        () => { console.log('✓ Admin user seeded'); }
+      );
+    });
   });
 }
 
