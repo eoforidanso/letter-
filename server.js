@@ -101,6 +101,26 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
+// Temporary admin password reset — protected by PORTAL_SECRET, remove after use
+app.post('/api/admin/reset-password', async (req, res) => {
+  const PORTAL_SECRET = process.env.PORTAL_SECRET;
+  const { secret, email, newPassword } = req.body;
+  if (!PORTAL_SECRET || secret !== PORTAL_SECRET) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  if (!email || !newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: 'email and newPassword (min 6 chars) required' });
+  }
+  const bcrypt = require('bcryptjs');
+  const hash = await bcrypt.hash(newPassword, 10);
+  const db = require('./backend/config/database');
+  db.run('UPDATE users SET password = ? WHERE email = ?', [hash, email], function(err) {
+    if (err) return res.status(500).json({ message: 'DB error', error: err.message });
+    if (this.changes === 0) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'Password updated successfully' });
+  });
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, '.')));
 
